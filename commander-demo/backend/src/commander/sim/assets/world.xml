@@ -1,0 +1,187 @@
+<!--
+Commander Demo - MuJoCo World
+
+This world contains:
+- Flat ground plane (100m x 100m, centered at origin)
+- 3 UGV (Unmanned Ground Vehicles) - box-shaped robots
+- 2 UAV (Unmanned Aerial Vehicles) - quadrotor-style drones
+- No-go zone R1 visualized as translucent red box
+- Checkpoint sites (alpha, beta, gamma, home)
+- Coordinate grid markers
+-->
+<mujoco model="commander_world">
+  <!-- Simulation settings -->
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="RK4">
+    <flag contact="enable" />
+  </option>
+
+  <!-- Visual settings -->
+  <visual>
+    <headlight ambient="0.4 0.4 0.4" diffuse="0.6 0.6 0.6" specular="0.2 0.2 0.2"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <quality shadowsize="4096"/>
+    <map force="0.1" zfar="50"/>
+  </visual>
+
+  <!-- Assets: textures, materials -->
+  <asset>
+    <!-- Ground texture -->
+    <texture name="groundplane" type="2d" builtin="checker" rgb1="0.2 0.25 0.3" rgb2="0.15 0.2 0.25" width="512" height="512" mark="edge" markrgb="0.3 0.35 0.4"/>
+    <material name="groundplane" texture="groundplane" texrepeat="20 20" texuniform="true" reflectance="0.1"/>
+    
+    <!-- Platform materials -->
+    <material name="ugv_body" rgba="0.13 0.77 0.37 1"/>  <!-- Green -->
+    <material name="ugv_wheel" rgba="0.2 0.2 0.2 1"/>
+    <material name="uav_body" rgba="0.39 0.4 0.95 1"/>   <!-- Purple/indigo -->
+    <material name="uav_rotor" rgba="0.3 0.3 0.3 0.8"/>
+    
+    <!-- No-go zone material (translucent red) -->
+    <material name="nogo_zone" rgba="0.9 0.2 0.2 0.25"/>
+    
+    <!-- Checkpoint markers -->
+    <material name="checkpoint" rgba="1 0.8 0 0.6"/>
+    <material name="home_marker" rgba="0 0.7 1 0.6"/>
+    
+    <!-- Grid marker material -->
+    <material name="grid_marker" rgba="0.5 0.5 0.5 0.3"/>
+  </asset>
+
+  <!-- World static geometry -->
+  <worldbody>
+    <!-- Lighting -->
+    <light name="spotlight" pos="0 0 50" dir="0 0 -1" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" cutoff="60"/>
+    
+    <!-- Ground plane -->
+    <geom name="ground" type="plane" size="50 50 0.1" material="groundplane"/>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         Coordinate Grid Markers (every 10m from -40 to +40)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <!-- X-axis markers -->
+    <geom name="grid_x_n40" type="box" pos="-40 0 0.01" size="0.1 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_n30" type="box" pos="-30 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_n20" type="box" pos="-20 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_n10" type="box" pos="-10 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_0" type="box" pos="0 0 0.01" size="0.1 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_p10" type="box" pos="10 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_p20" type="box" pos="20 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_p30" type="box" pos="30 0 0.01" size="0.05 50 0.01" material="grid_marker"/>
+    <geom name="grid_x_p40" type="box" pos="40 0 0.01" size="0.1 50 0.01" material="grid_marker"/>
+    
+    <!-- Y-axis markers -->
+    <geom name="grid_y_n40" type="box" pos="0 -40 0.01" size="50 0.1 0.01" material="grid_marker"/>
+    <geom name="grid_y_n30" type="box" pos="0 -30 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_n20" type="box" pos="0 -20 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_n10" type="box" pos="0 -10 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_0" type="box" pos="0 0 0.01" size="50 0.1 0.01" material="grid_marker"/>
+    <geom name="grid_y_p10" type="box" pos="0 10 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_p20" type="box" pos="0 20 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_p30" type="box" pos="0 30 0.01" size="50 0.05 0.01" material="grid_marker"/>
+    <geom name="grid_y_p40" type="box" pos="0 40 0.01" size="50 0.1 0.01" material="grid_marker"/>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         No-Go Zone R1: Square from (-20,-20) to (-10,-10)
+         Visualized as translucent red box, 3m tall
+         ════════════════════════════════════════════════════════════════════════ -->
+    <geom name="nogo_r1" type="box" pos="-15 -15 1.5" size="5 5 1.5" material="nogo_zone" contype="0" conaffinity="0"/>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         Checkpoint Sites (named locations for mission planning)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <!-- Home: Origin -->
+    <site name="checkpoint_home" pos="0 0 0.1" size="1.5" type="cylinder" material="home_marker"/>
+    
+    <!-- Alpha: (20, 30) -->
+    <site name="checkpoint_alpha" pos="20 30 0.1" size="1" type="cylinder" material="checkpoint"/>
+    
+    <!-- Bravo: (40, 50) - note: clamped to world bounds -->
+    <site name="checkpoint_bravo" pos="40 45 0.1" size="1" type="cylinder" material="checkpoint"/>
+    
+    <!-- Charlie: (10, -20) -->
+    <site name="checkpoint_charlie" pos="10 -20 0.1" size="1" type="cylinder" material="checkpoint"/>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         UGV 1: UGV Alpha - Starting at origin
+         ════════════════════════════════════════════════════════════════════════ -->
+    <body name="ugv1" pos="0 0 0.25">
+      <freejoint name="ugv1_joint"/>
+      <geom name="ugv1_body" type="box" size="0.4 0.3 0.15" material="ugv_body" mass="50"/>
+      <!-- Wheels (visual only in this simplified model) -->
+      <geom name="ugv1_wheel_fl" type="cylinder" pos="0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv1_wheel_fr" type="cylinder" pos="0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv1_wheel_rl" type="cylinder" pos="-0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv1_wheel_rr" type="cylinder" pos="-0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <site name="ugv1_center" pos="0 0 0.2" size="0.05"/>
+    </body>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         UGV 2: UGV Bravo - Starting at (5, 0)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <body name="ugv2" pos="5 0 0.25">
+      <freejoint name="ugv2_joint"/>
+      <geom name="ugv2_body" type="box" size="0.4 0.3 0.15" material="ugv_body" mass="50"/>
+      <geom name="ugv2_wheel_fl" type="cylinder" pos="0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv2_wheel_fr" type="cylinder" pos="0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv2_wheel_rl" type="cylinder" pos="-0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv2_wheel_rr" type="cylinder" pos="-0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <site name="ugv2_center" pos="0 0 0.2" size="0.05"/>
+    </body>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         UGV 3: UGV Charlie - Starting at (10, 0)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <body name="ugv3" pos="10 0 0.25">
+      <freejoint name="ugv3_joint"/>
+      <geom name="ugv3_body" type="box" size="0.4 0.3 0.15" material="ugv_body" mass="50"/>
+      <geom name="ugv3_wheel_fl" type="cylinder" pos="0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv3_wheel_fr" type="cylinder" pos="0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv3_wheel_rl" type="cylinder" pos="-0.3 0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <geom name="ugv3_wheel_rr" type="cylinder" pos="-0.3 -0.35 -0.1" size="0.12 0.05" material="ugv_wheel" euler="90 0 0"/>
+      <site name="ugv3_center" pos="0 0 0.2" size="0.05"/>
+    </body>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         UAV 1: UAV Delta - Starting at (0, 0, 15)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <body name="uav1" pos="0 0 15">
+      <freejoint name="uav1_joint"/>
+      <!-- Central body -->
+      <geom name="uav1_body" type="box" size="0.15 0.15 0.05" material="uav_body" mass="2"/>
+      <!-- Arms -->
+      <geom name="uav1_arm1" type="capsule" fromto="0 0 0 0.3 0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav1_arm2" type="capsule" fromto="0 0 0 0.3 -0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav1_arm3" type="capsule" fromto="0 0 0 -0.3 0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav1_arm4" type="capsule" fromto="0 0 0 -0.3 -0.3 0" size="0.02" material="uav_body"/>
+      <!-- Rotors -->
+      <geom name="uav1_rotor1" type="cylinder" pos="0.3 0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav1_rotor2" type="cylinder" pos="0.3 -0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav1_rotor3" type="cylinder" pos="-0.3 0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav1_rotor4" type="cylinder" pos="-0.3 -0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <site name="uav1_center" pos="0 0 0" size="0.05"/>
+    </body>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         UAV 2: UAV Echo - Starting at (5, 0, 20)
+         ════════════════════════════════════════════════════════════════════════ -->
+    <body name="uav2" pos="5 0 20">
+      <freejoint name="uav2_joint"/>
+      <geom name="uav2_body" type="box" size="0.15 0.15 0.05" material="uav_body" mass="2"/>
+      <geom name="uav2_arm1" type="capsule" fromto="0 0 0 0.3 0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav2_arm2" type="capsule" fromto="0 0 0 0.3 -0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav2_arm3" type="capsule" fromto="0 0 0 -0.3 0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav2_arm4" type="capsule" fromto="0 0 0 -0.3 -0.3 0" size="0.02" material="uav_body"/>
+      <geom name="uav2_rotor1" type="cylinder" pos="0.3 0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav2_rotor2" type="cylinder" pos="0.3 -0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav2_rotor3" type="cylinder" pos="-0.3 0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <geom name="uav2_rotor4" type="cylinder" pos="-0.3 -0.3 0.03" size="0.12 0.01" material="uav_rotor"/>
+      <site name="uav2_center" pos="0 0 0" size="0.05"/>
+    </body>
+
+  </worldbody>
+
+  <!-- Actuators could be added here for motor control -->
+  <actuator>
+    <!-- Placeholder: in a full sim, we'd have motor actuators -->
+  </actuator>
+
+</mujoco>
